@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Production Planning System - Google Apps Script Integration</title>
-    <!-- Tailwind CSS untuk Layout Modern, Bersih, dan Scannable -->
+    <title>Production Planning System - Fixed Actual Database Mapping</title>
+    <!-- Tailwind CSS untuk tata letak modern, bersih, dan scannable -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased">
@@ -15,12 +15,12 @@
             <div>
                 <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
                     <span>⚙️ Production Scheduling Platform</span>
-                    <span class="text-xs font-semibold bg-blue-500/20 text-blue-400 px-2.5 py-0.5 rounded-full border border-blue-500/30">Google Apps Script Connected</span>
+                    <span class="text-xs font-semibold bg-blue-500/20 text-blue-400 px-2.5 py-0.5 rounded-full border border-blue-500/30">Actual Spreadsheet Schema Loaded</span>
                 </h1>
                 <p class="text-xs text-slate-400 mt-0.5">Siklus Shift: 05:59 s/d 05:59 Hari Berikutnya (Maks. 24 Jam Kalender)</p>
             </div>
             <div>
-                <button type="button" onclick="openWizardModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition duration-150 flex items-center gap-1.5">
+                <button type="button" onclick="openWizardModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition duration-150 flex items-center gap-1.5 cursor-pointer">
                     <span>➕ Tambah Varian Baru (Wizard)</span>
                 </button>
             </div>
@@ -35,7 +35,7 @@
             <div class="p-5 bg-gray-50/70 border-b border-gray-100 flex justify-between items-center">
                 <div>
                     <h2 class="text-base font-bold text-gray-800">📋 Tampilan Jadwal Rencana Kerja Harian (`production_plan_details`)</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Menampilkan rincian vertikal per mesin operasional dan saran manpower berpasangan secara spesifik.</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Menampilkan rincian vertikal per mesin operasional dan saran manpower berpasangan secara spesifik sesuai data riil spreadsheet.</p>
                 </div>
             </div>
 
@@ -51,11 +51,11 @@
                             <th class="p-3 text-right border-r border-gray-200/60" style="width: 100px;">Target (Kg)</th>
                             <th class="p-3 text-right border-r border-gray-200/60" style="width: 90px;">Berat/Pcs (g)</th>
                             <th class="p-3 text-right border-r border-gray-200/60" style="width: 120px;">Hasil Konv (Pcs)</th>
-                            <th class="p-3 border-r border-gray-200/60" style="width: 180px;">Proses Kerja</th>
+                            <th class="p-3 border-r border-gray-200/60" style="width: 200px;">Proses Kerja (Mesin Riil)</th>
                             <th class="p-3 border-r border-gray-200/60" style="width: 110px;">Plant Assigned</th>
                             <th class="p-3 border-r border-gray-200/60">Ruangan Assigned</th>
                             <th class="p-3 text-center border-r border-gray-200/60" style="width: 110px;">Est. Waktu</th>
-                            <th class="p-3 border-r border-gray-200/60" style="width: 240px;">Saran Manpower</th>
+                            <th class="p-3 border-r border-gray-200/60" style="width: 250px;">Saran Manpower</th>
                             <th class="p-3 text-center" style="width: 70px;">Aksi</th>
                         </tr>
                     </thead>
@@ -100,7 +100,7 @@
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
                 <div>
                     <h3 class="text-base font-bold">📦 Wizard Perencanaan Multi-Proses Sekaligus</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Konfigurasi Tunggal: Cukup isi data induk 1 kali, centang semua proses paralel yang berjalan.</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Sistem memetakan daftar unit mesin paralel riil dari database Google Sheets secara dinamis.</p>
                 </div>
                 <button onclick="closeWizardModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
             </div>
@@ -158,8 +158,8 @@
                 <!-- SEKSI CHECKLIST MATRIKS PROSES & RUANGAN PARALEL -->
                 <div class="space-y-3">
                     <div class="flex justify-between items-center border-b border-gray-200 pb-1.5">
-                        <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">⚙️ Penugasan Ruangan & Mesin Paralel Hari Berjalan</span>
-                        <span class="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded shadow-3xs">Opsi A: Multi-Select Mode</span>
+                        <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">⚙️ Penugasan Ruangan & Unit Mesin Hari Berjalan (Opsi A)</span>
+                        <span class="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded shadow-3xs">Live Dynamic Filtering</span>
                     </div>
 
                     <!-- Container utama pencantuman daftar baris proses secara otomatis -->
@@ -183,94 +183,134 @@
     <!-- DATA LOGIC ENGINE & API CONNECTIVITY -->
     <!-- ============================================================== -->
     <script>
-        // CONFIGURATION: Tempel URL Aplikasi Web dari deployment Google Apps Script Anda di sini
-        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ_kOJfc-6gCWSI69jEdrGNc-UJuoIMzVZf74PGuclQQ6Z7WXSRrKPXfchj0nIXFVg/exec";
+        // CONFIGURATION: Tempel URL Web App dari deployment Google Apps Script Anda di sini
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXXX/exec";
         
-        // Objek penampung database master yang ditarik dari Google Sheets tab 'master_mesin_manpower'
-        let dbMasterSheets = {};
+        // Objek induk utama penampung data master terstruktur
+        let dbMasterSheets = { "jelly_lip": {}, "foundation": {}, "powder": {} };
 
-        // 1. LIFECYCLE EVENT: Dijalankan otomatis saat pertama kali Web App dibuka
+        // 1. LIFECYCLE EVENT: Mengambil data master riil dari Spreadsheet saat aplikasi dibuka
         window.onload = function() {
-            // Muat database master mesin dan ruangan secara live dari Google Sheets
+            renderDashboardTable();
+            
             fetch(APPS_SCRIPT_URL)
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    // Kelompokkan data mentah spreadsheet ke format relasional objek berbasis varian produk
+                    // Proses pemetaan relasional dari baris-baris spreadsheet riil
                     dbMasterSheets = mengelompokkanDataMaster(result.data);
-                    console.log("Database Master Sukses Dimuat dari Google Sheets:", dbMasterSheets);
+                    console.log("Database Master Sukses Dimuat & Dikelompokkan:", dbMasterSheets);
                 } else {
                     alert("Gagal memuat database master dari Google Sheets: " + result.message);
                 }
             })
             .catch(err => {
-                console.error("Error fetching live spreadsheet master data:", err);
-                alert("🚨 Koneksi Gagal: Pastikan URL Apps Script sudah terbit (deployed) dengan akses 'Anyone'.");
+                console.error("Error fetching live data:", err);
+                alert("🚨 Koneksi Gagal: Pastikan URL Apps Script sudah di-deploy dengan akses 'Anyone'.");
             });
         };
 
-        // Fungsi pembantu menstrukturkan array baris data dari spreadsheet ke format key varian produk
+        // 2. RECONSTRUCTION ENGINE: Menyatukan mesin-mesin yang bernama sama ke dalam grup Ruangan yang sama
         function mengelompokkanDataMaster(rawData) {
-    let grouped = { "jelly_lip": [], "foundation": [], "powder": [] };
-    
-    rawData.forEach(row => {
-        // PERBAIKAN: Deteksi nama kolom secara fleksibel untuk menghindari 'undefined'
-        // Kita gunakan fallback jika nama kolom aslinya sedikit berbeda di Google Sheets
-        let subBrandText = row["Sub Brand (cth: Jelly Tint ; Lip Cream ; Dll)"] || row["Sub Brand"] || "";
-        let plantFinal = row["Plant Final"] || row["Plant"] || "N/A";
-        let ruanganName = row["Ruangan"] || "N/A";
-        let mesinName = row["Mesin"] || "N/A";
-        let targetProdStr = row["Target Prod"] || row[" Target Prod "] || "0";
-        let mpMin = row["Manpower Minimal"] || 1;
-        let mpMax = row["Manpower Maksimal"] || 2;
-        
-        let cap_standar = parseFloat(targetProdStr.toString().replace(/,/g, '')) || 0;
-        
-        let cleanedRecord = {
-            id: row["master_id"] || Math.floor(Math.random() * 1000),
-            plant: plantFinal,
-            ruangan: ruanganName,
-            mesin: mesinName,
-            // Membuat nama nomor mesin secara dinamis berbasis kolom 'Mesin' asli
-            list_mesin: [mesinName + " #1", mesinName + " #2"], 
-            tipe: cap_standar === 0 ? "HULU" : "HILIR",
-            cap_standar: cap_standar,
-            fixed_jam_batch: cap_standar === 0 ? 3.0 : 0, 
-            mp_min: parseInt(mpMin) || 1,
-            mp_max: parseInt(mpMax) || 2
-        };
-        
-        // Konversi ke huruf kecil agar pencocokan string tidak sensitif huruf besar-kecil
-        let subBrandLower = subBrandText.toLowerCase();
-        
-        if (subBrandLower.includes("jelly") || subBrandLower.includes("cream") || subBrandLower.includes("velvet") || subBrandLower.includes("tint")) {
-            grouped["jelly_lip"].push(cleanedRecord);
-        } else if (subBrandLower.includes("320") || subBrandLower.includes("fondation") || subBrandLower.includes("foundation")) {
-            grouped["foundation"].push(cleanedRecord);
-        } else {
-            grouped["powder"].push(cleanedRecord);
-        }
-    });
-    return grouped;
-}
-
-        // CONTROL VIEW INTERACTIONS
-        function openWizardModal() {
-            document.getElementById('wizardModal').classList.remove('hidden');
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('wizDate').value = tomorrow.toISOString().split('T')[0];
+            let grouped = { "jelly_lip": {}, "foundation": {}, "powder": {} };
             
-            document.getElementById('wizBrand').value = "";
-            document.getElementById('wizBatchQty').value = "";
-            document.getElementById('wizTargetKg').value = "";
-            document.getElementById('wizWeightPerPcsGram').value = "";
-            document.getElementById('lblCalculatedPcs').innerText = "- Pcs";
-            document.getElementById('multiRoomContainer').innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4">Silakan tentukan Varian Sub Brand di atas untuk memuat matriks penugasan proses.</p>`;
+            rawData.forEach(row => {
+                // Konversi semua properti key objek ke huruf kecil tanpa spasi agar aman dari mismatch typo header
+                let cleanRow = {};
+                for (let key in row) {
+                    let cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    cleanRow[cleanKey] = row[key];
+                }
+
+                let subBrandText = cleanRow["subbrand"] || "";
+                let subBrandLower = subBrandText.toLowerCase();
+
+                // Tentukan target pengelompokkan varian utama di frontend
+                let brandCategory = "powder"; 
+                if (subBrandLower.includes("jelly") || subBrandLower.includes("cream") || subBrandLower.includes("velvet") || subBrandLower.includes("tint") || subBrandLower === "all product") {
+                    brandCategory = "jelly_lip";
+                } else if (subBrandLower.includes("320") || subBrandLower.includes("fondation") || subBrandLower.includes("foundation")) {
+                    brandCategory = "foundation";
+                }
+
+                let ruangan = cleanRow["ruangan"] || "Tanpa Ruangan";
+                let plant = cleanRow["plantfinal"] || "N/A";
+                let namaMesinUnik = cleanRow["mesin"] || "N/A"; // Contoh: "Timbang - 1", "Filling Otomatis - 1"
+                let tipeProses = cleanRow["tipeproses"] || "Hilir";
+                let targetProd = parseFloat(cleanRow["targetprod"]) || 0;
+                let fixedDurasiBatch = parseFloat(cleanRow["fixeddurasibatch"]) || 0;
+                let mpMin = parseInt(cleanRow["manpowerminimal"]) || 1;
+                let mpMax = parseInt(cleanRow["manpowermaksimal"]) || 2;
+
+                // Jika Ruangan belum terdaftar di dalam kategori brand, daftarkan objek barunya
+                if (!grouped[brandCategory][ruangan]) {
+                    grouped[brandCategory][ruangan] = {
+                        ruangan: ruangan,
+                        plant: plant,
+                        tipe: tipeProses.toUpperCase(), // "HULU" atau "HILIR"
+                        cap_standar: targetProd,
+                        fixed_jam_batch: fixedDurasiBatch,
+                        mp_min: mpMin,
+                        mp_max: mpMax,
+                        list_mesin: [] // Menampung kumpulan nomor mesin riil di ruangan ini
+                    };
+                }
+
+                // Masukkan nama unit mesin spesifik ke daftar mesin di ruangan tersebut
+                if (!grouped[brandCategory][ruangan].list_mesin.includes(namaMesinUnik)) {
+                    grouped[brandCategory][ruangan].list_mesin.push(namaMesinUnik);
+                }
+            });
+
+            return grouped;
         }
 
-        function closeWizardModal() {
-            document.getElementById('wizardModal').classList.add('hidden');
+        // 3. UI GENERATOR: Menampilkan daftar ruangan beserta checkbox mesin aslinya di modal Wizard
+        function loadMultiRoomGrid() {
+            const brandKey = document.getElementById('wizBrand').value;
+            const container = document.getElementById('multiRoomContainer');
+
+            if (!brandKey || !dbMasterSheets[brandKey] || Object.keys(dbMasterSheets[brandKey]).length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4">Silakan tentukan Varian Sub Brand di atas untuk memuat matriks penugasan proses.</p>`;
+                return;
+            }
+
+            let htmlString = "";
+            let roomIndex = 0;
+
+            // Loop setiap ruangan yang terikat dengan kategori varian produk pilihan
+            for (let roomName in dbMasterSheets[brandKey]) {
+                roomIndex++;
+                let roomData = dbMasterSheets[brandKey][roomName];
+                
+                // Buat checklist unit mesin riil dari database (bukan nomor tiruan lagi)
+                let machineCheckboxes = "";
+                roomData.list_mesin.forEach((m, idx) => {
+                    machineCheckboxes += `
+                        <label class="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-gray-200 text-[11px] font-semibold text-slate-700 cursor-pointer shadow-3xs hover:bg-slate-50">
+                            <input type="checkbox" name="wizMachList-${roomIndex}" value="${m}" checked class="rounded text-blue-600 w-3.5 h-3.5 focus:ring-0 cursor-pointer">
+                            <span>${m}</span>
+                        </label>
+                    `;
+                });
+
+                htmlString += `
+                    <div class="p-3 bg-slate-50 border border-gray-200 rounded-xl flex items-center justify-between gap-4 hover:bg-slate-100/50 transition">
+                        <div class="flex items-start gap-3 flex-1">
+                            <input type="checkbox" id="chkRoomActive-${roomIndex}" data-room-name="${roomName}" checked class="w-4 h-4 text-blue-600 rounded focus:ring-0 mt-0.5 cursor-pointer">
+                            <div>
+                                <div class="text-xs font-bold text-gray-800">${roomName}</div>
+                                <div class="text-[10px] text-gray-400 font-mono">Area Plant: <span class="text-gray-600 font-bold">${roomData.plant}</span> | Karakteristik: <span class="font-bold text-blue-600">${roomData.tipe}</span></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-1 bg-gray-200/50 p-1.5 rounded-lg border border-gray-200/30 max-w-[60%]">
+                            ${machineCheckboxes}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = htmlString;
         }
 
         function calculatePcsOutput() {
@@ -287,48 +327,7 @@
             displayEl.innerText = `${calculatedPcs.toLocaleString('id-ID')} Pcs`;
         }
 
-        // Menampilkan seluruh Ruangan, Area Plant, dan Mesin bawaan produk sekaligus (Opsi A Grid)
-        function loadMultiRoomGrid() {
-            const brandKey = document.getElementById('wizBrand').value;
-            const container = document.getElementById('multiRoomContainer');
-
-            if (!brandKey || !dbMasterSheets[brandKey]) {
-                container.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4">Silakan tentukan Varian Sub Brand di atas.</p>`;
-                return;
-            }
-
-            let htmlString = "";
-            dbMasterSheets[brandKey].forEach(proc => {
-                let machineCheckboxes = "";
-                proc.list_mesin.forEach(m => {
-                    machineCheckboxes += `
-                        <label class="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-gray-200 text-[11px] font-medium cursor-pointer shadow-3xs hover:bg-slate-50">
-                            <input type="checkbox" name="wizMachList-${proc.id}" value="${m}" checked class="rounded text-blue-600 w-3 h-3 focus:ring-0">
-                            <span>${m}</span>
-                        </label>
-                    `;
-                });
-
-                htmlString += `
-                    <div class="p-3 bg-slate-50 border border-gray-200 rounded-xl flex items-center justify-between gap-4 hover:bg-slate-100/50 transition">
-                        <div class="flex items-start gap-3 flex-1">
-                            <input type="checkbox" id="chkRoomActive-${proc.id}" value="${proc.id}" checked class="w-4 h-4 text-blue-600 rounded focus:ring-0 mt-0.5 cursor-pointer">
-                            <div>
-                                <div class="text-xs font-bold text-gray-800">${proc.ruangan}</div>
-                                <div class="text-[10px] text-gray-400 font-mono">Area: <span class="text-gray-600 font-bold">${proc.plant}</span> | Proses: <span class="font-bold text-blue-600">${proc.mesin}</span></div>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-1 bg-gray-200/50 p-1.5 rounded-lg border border-gray-200/30">
-                            ${machineCheckboxes}
-                        </div>
-                    </div>
-                `;
-            });
-
-            container.innerHTML = htmlString;
-        }
-
-        // Mengurai hasil isian Wizard menjadi multi-baris data pada grid dashboard utama
+        // 4. TRANSFORMATION LOGIC: Memecah data ruangan terpilih menjadi baris transaksi detail harian
         function addMultiWizardToDashboard() {
             const date = document.getElementById('wizDate').value;
             const shift = document.getElementById('wizShift').value;
@@ -345,32 +344,38 @@
 
             const targetPcsCalculated = Math.round((targetKg * 1000) / weightGram);
             let processedRowsCount = 0;
+            let roomIndex = 0;
 
-            dbMasterSheets[brandKey].forEach(proc => {
-                const roomCheckbox = document.getElementById(`chkRoomActive-${proc.id}`);
+            for (let roomName in dbMasterSheets[brandKey]) {
+                roomIndex++;
+                const roomCheckbox = document.getElementById(`chkRoomActive-${roomIndex}`);
                 
                 if (roomCheckbox && roomCheckbox.checked) {
-                    const checkedBoxes = document.querySelectorAll(`input[name="wizMachList-${proc.id}"]:checked`);
+                    const roomData = dbMasterSheets[brandKey][roomName];
+                    const checkedBoxes = document.querySelectorAll(`input[name="wizMachList-${roomIndex}"]:checked`);
                     const machineList = Array.from(checkedBoxes).map(cb => cb.value);
                     const jumlahMesinAktif = machineList.length;
 
-                    if (jumlahMesinAktif === 0) return; 
+                    if (jumlahMesinAktif === 0) continue; 
 
                     let totalKapasitasLabel = "";
                     let durasiJam = 0;
 
-                    if (proc.tipe === "HULU") {
-                        totalKapasitasLabel = `${proc.fixed_jam_batch} Jam/Batch`;
-                        durasiJam = ((batchQty * proc.fixed_jam_batch) / jumlahMesinAktif).toFixed(1);
+                    if (roomData.tipe === "HULU") {
+                        // Rumus Hulu: (Jumlah Batch * Durasi Fixed per Batch dari Sheet) / Jumlah unit mesin aktif
+                        totalKapasitasLabel = `${roomData.fixed_jam_batch} Jam / Batch`;
+                        durasiJam = ((batchQty * roomData.fixed_jam_batch) / jumlahMesinAktif).toFixed(1);
                     } else {
-                        const outputPerJamTotal = proc.cap_standar * jumlahMesinAktif;
-                        totalKapasitasLabel = `${outputPerJamTotal.toLocaleString('id-ID')}/Jam`;
+                        // Rumus Hilir: Target Pcs / (Kapasitas per Jam dari Sheet * Jumlah unit mesin aktif)
+                        const outputPerJamTotal = roomData.cap_standar * jumlahMesinAktif;
+                        totalKapasitasLabel = `${outputPerJamTotal.toLocaleString('id-ID')} Pcs / Jam`;
                         durasiJam = (targetPcsCalculated / outputPerJamTotal).toFixed(1);
                     }
 
-                    let mpPerMesin = proc.mp_min;
+                    // Saran manpower ditentukan oleh durasi jam kerja kumulatif
+                    let mpPerMesin = roomData.mp_min;
                     if (durasiJam > 6) {
-                        mpPerMesin = proc.mp_max;
+                        mpPerMesin = roomData.mp_max;
                     }
                     const totalManpowerKumulatif = mpPerMesin * jumlahMesinAktif;
                     const generatedDetailId = "DET-" + Math.floor(1000 + Math.random() * 9000);
@@ -384,10 +389,9 @@
                         target_kg: targetKg.toLocaleString('id-ID'),
                         berat_gram: weightGram,
                         target_pcs: targetPcsCalculated,
-                        proses_induk_nama: proc.mesin,
                         machines_array: machineList, 
-                        plant: proc.plant,
-                        ruangan: proc.ruangan,
+                        plant: roomData.plant,
+                        ruangan: roomName,
                         kapasitas_display: totalKapasitasLabel,
                         est_waktu: parseFloat(durasiJam),
                         saran_mp_total: totalManpowerKumulatif,
@@ -396,7 +400,7 @@
 
                     processedRowsCount++;
                 }
-            });
+            }
 
             if (processedRowsCount === 0) {
                 alert("Gagal: Anda harus mencentang minimal satu Ruangan/Proses!");
@@ -407,7 +411,6 @@
             renderDashboardTable();
         }
 
-        // Merender tampilan baris grid secara live (Rincian vertikal per-mesin & MP Berpasangan)
         function renderDashboardTable() {
             const tbody = document.getElementById('dashboardTableBody');
             
@@ -416,7 +419,7 @@
                     <tr id="emptyRowState">
                         <td colspan="13" class="text-center py-16 text-gray-400">
                             <span class="text-4xl">🗂️</span>
-                            <p class="mt-2 text-xs">Belum ada jadwal rencana produksi. Klik tombol **Tambah Varian Baru** di atas untuk memulai simulasi.</p>
+                            <p class="mt-2 text-xs">Belum ada jadwal rencana produksi harian. Klik tombol **Tambah Varian Baru (Wizard)** di atas.</p>
                         </td>
                     </tr>
                 `;
@@ -441,14 +444,14 @@
                     waktuStyleClass = "text-amber-600 font-bold";
                 }
 
-                // 1. FORMAT KOLOM PROSES KERJA: Diurai vertikal berbaris
-                let prosesKerjaListHTML = `<div class="space-y-0.5 font-bold text-slate-800">`;
+                // Format List Vertikal unit mesin riil
+                let prosesKerjaListHTML = `<div class="space-y-0.5 font-bold text-slate-800 text-xs">`;
                 row.machines_array.forEach(m => {
                     prosesKerjaListHTML += `<div class="flex items-center gap-1">🔹 ${m}</div>`;
                 });
                 prosesKerjaListHTML += `</div>`;
 
-                // 2. FORMAT KOLOM SARAN MANPOWER: Pasangan Nama Mesin | X Orang
+                // Format Rincian Pasangan Manpower: Nama Mesin | X Orang
                 let manpowerListHTML = `<div class="space-y-1">`;
                 row.machines_array.forEach(m => {
                     manpowerListHTML += `
@@ -501,14 +504,12 @@
             document.getElementById('lblTotalMP').innerText = `${mp} Orang`;
         }
 
-        // TRANSMISI DATA API: Mengirimkan JSON Payload gabungan menuju Google Apps Script
         function finalSubmitToSheets() {
             if (activePlanDetails.length === 0) {
                 alert("Gagal melakukan sinkronisasi: Grid tabel kosong.");
                 return;
             }
 
-            // Konstruksi payload mendetail per baris mesin operasional
             const prosesTerpilihPayload = activePlanDetails.map(row => ({
                 mesin_assigned_list: row.machines_array.join(", "),
                 plant_assigned: row.plant,
@@ -529,21 +530,20 @@
                 proses_terpilih: prosesTerpilihPayload
             };
 
-            // Melakukan transmisi POST data ke Apps Script URL
             fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors', // Mode penting melewati batas CORS keamanan eksternal Google Redirect
+                mode: 'no-cors', 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payloadData)
             })
             .then(() => {
-                alert(`🎉 SINKRONISASI SUKSES!\n\nSeluruh rangkaian data relasional (Induk Rencana & Rincian Mesin Kerja) telah sukses di-commit ke Spreadsheet Anda.`);
+                alert(`🎉 SINKRONISASI AKTUAL BERHASIL!\n\nSeluruh rangkaian rencana produksi harian telah sukses tersimpan di Google Spreadsheet Anda.`);
                 activePlanDetails = []; 
                 renderDashboardTable();
             })
             .catch(err => {
-                console.error('Error during data submission:', err);
-                alert('🚨 Sinkronisasi Gagal: Periksa kembali status deployment Web App Anda.');
+                console.error('Error:', err);
+                alert('🚨 Sinkronisasi Gagal: Periksa status deployment API Apps Script Anda.');
             });
         }
     </script>
