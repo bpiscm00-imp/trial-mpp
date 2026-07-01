@@ -179,20 +179,23 @@
         </div>
     </div>
 
-    <!-- ============================================================== -->
+  <!-- ============================================================== -->
     <!-- DATA LOGIC ENGINE & API CONNECTIVITY -->
     <!-- ============================================================== -->
     <script>
         // CONFIGURATION: Tempel URL Web App dari deployment Google Apps Script Anda di sini
-        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXXX/exec";
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ_kOJfc-6gCWSI69jEdrGNc-UJuoIMzVZf74PGuclQQ6Z7WXSRrKPXfchj0nIXFVg/exec";
         
-        // Objek induk utama penampung data master terstruktur
+        // 1. DEKLARASI VARIABEL UTAMA (Wajib ditaruh di paling atas agar tidak memicu ReferenceError)
+        let activePlanDetails = [];
         let dbMasterSheets = { "jelly_lip": {}, "foundation": {}, "powder": {} };
 
-        // 1. LIFECYCLE EVENT: Mengambil data master riil dari Spreadsheet saat aplikasi dibuka
+        // 2. LIFECYCLE EVENT: Mengambil data master riil dari Spreadsheet saat aplikasi dibuka
         window.onload = function() {
+            // Render grid kosong pertama kali
             renderDashboardTable();
             
+            // Tarik data master secara live
             fetch(APPS_SCRIPT_URL)
             .then(response => response.json())
             .then(result => {
@@ -210,12 +213,11 @@
             });
         };
 
-        // 2. RECONSTRUCTION ENGINE: Menyatukan mesin-mesin yang bernama sama ke dalam grup Ruangan yang sama
+        // 3. RECONSTRUCTION ENGINE: Menyatukan mesin-mesin yang bernama sama ke dalam grup Ruangan yang sama
         function mengelompokkanDataMaster(rawData) {
             let grouped = { "jelly_lip": {}, "foundation": {}, "powder": {} };
             
             rawData.forEach(row => {
-                // Konversi semua properti key objek ke huruf kecil tanpa spasi agar aman dari mismatch typo header
                 let cleanRow = {};
                 for (let key in row) {
                     let cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -225,7 +227,6 @@
                 let subBrandText = cleanRow["subbrand"] || "";
                 let subBrandLower = subBrandText.toLowerCase();
 
-                // Tentukan target pengelompokkan varian utama di frontend
                 let brandCategory = "powder"; 
                 if (subBrandLower.includes("jelly") || subBrandLower.includes("cream") || subBrandLower.includes("velvet") || subBrandLower.includes("tint") || subBrandLower === "all product") {
                     brandCategory = "jelly_lip";
@@ -235,28 +236,26 @@
 
                 let ruangan = cleanRow["ruangan"] || "Tanpa Ruangan";
                 let plant = cleanRow["plantfinal"] || "N/A";
-                let namaMesinUnik = cleanRow["mesin"] || "N/A"; // Contoh: "Timbang - 1", "Filling Otomatis - 1"
+                let namaMesinUnik = row["Mesin"] || cleanRow["mesin"] || "N/A"; 
                 let tipeProses = cleanRow["tipeproses"] || "Hilir";
                 let targetProd = parseFloat(cleanRow["targetprod"]) || 0;
                 let fixedDurasiBatch = parseFloat(cleanRow["fixeddurasibatch"]) || 0;
                 let mpMin = parseInt(cleanRow["manpowerminimal"]) || 1;
                 let mpMax = parseInt(cleanRow["manpowermaksimal"]) || 2;
 
-                // Jika Ruangan belum terdaftar di dalam kategori brand, daftarkan objek barunya
                 if (!grouped[brandCategory][ruangan]) {
                     grouped[brandCategory][ruangan] = {
                         ruangan: ruangan,
                         plant: plant,
-                        tipe: tipeProses.toUpperCase(), // "HULU" atau "HILIR"
+                        tipe: tipeProses.toUpperCase(), 
                         cap_standar: targetProd,
                         fixed_jam_batch: fixedDurasiBatch,
                         mp_min: mpMin,
                         mp_max: mpMax,
-                        list_mesin: [] // Menampung kumpulan nomor mesin riil di ruangan ini
+                        list_mesin: [] 
                     };
                 }
 
-                // Masukkan nama unit mesin spesifik ke daftar mesin di ruangan tersebut
                 if (!grouped[brandCategory][ruangan].list_mesin.includes(namaMesinUnik)) {
                     grouped[brandCategory][ruangan].list_mesin.push(namaMesinUnik);
                 }
@@ -265,7 +264,7 @@
             return grouped;
         }
 
-        // 3. UI GENERATOR: Menampilkan daftar ruangan beserta checkbox mesin aslinya di modal Wizard
+        // 4. UI GENERATOR: Menampilkan daftar ruangan beserta checkbox mesin aslinya di modal Wizard
         function loadMultiRoomGrid() {
             const brandKey = document.getElementById('wizBrand').value;
             const container = document.getElementById('multiRoomContainer');
@@ -278,12 +277,10 @@
             let htmlString = "";
             let roomIndex = 0;
 
-            // Loop setiap ruangan yang terikat dengan kategori varian produk pilihan
             for (let roomName in dbMasterSheets[brandKey]) {
                 roomIndex++;
                 let roomData = dbMasterSheets[brandKey][roomName];
                 
-                // Buat checklist unit mesin riil dari database (bukan nomor tiruan lagi)
                 let machineCheckboxes = "";
                 roomData.list_mesin.forEach((m, idx) => {
                     machineCheckboxes += `
@@ -313,6 +310,24 @@
             container.innerHTML = htmlString;
         }
 
+        function openWizardModal() {
+            document.getElementById('wizardModal').classList.remove('hidden');
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('wizDate').value = tomorrow.toISOString().split('T')[0];
+            
+            document.getElementById('wizBrand').value = "";
+            document.getElementById('wizBatchQty').value = "";
+            document.getElementById('wizTargetKg').value = "";
+            document.getElementById('wizWeightPerPcsGram').value = "";
+            document.getElementById('lblCalculatedPcs').innerText = "- Pcs";
+            document.getElementById('multiRoomContainer').innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4">Silakan tentukan Varian Sub Brand di atas untuk memuat matriks penugasan proses.</p>`;
+        }
+
+        function closeWizardModal() {
+            document.getElementById('wizardModal').classList.add('hidden');
+        }
+
         function calculatePcsOutput() {
             const kg = parseFloat(document.getElementById('wizTargetKg').value) || 0;
             const weightGram = parseFloat(document.getElementById('wizWeightPerPcsGram').value) || 0;
@@ -327,7 +342,6 @@
             displayEl.innerText = `${calculatedPcs.toLocaleString('id-ID')} Pcs`;
         }
 
-        // 4. TRANSFORMATION LOGIC: Memecah data ruangan terpilih menjadi baris transaksi detail harian
         function addMultiWizardToDashboard() {
             const date = document.getElementById('wizDate').value;
             const shift = document.getElementById('wizShift').value;
@@ -362,17 +376,14 @@
                     let durasiJam = 0;
 
                     if (roomData.tipe === "HULU") {
-                        // Rumus Hulu: (Jumlah Batch * Durasi Fixed per Batch dari Sheet) / Jumlah unit mesin aktif
                         totalKapasitasLabel = `${roomData.fixed_jam_batch} Jam / Batch`;
                         durasiJam = ((batchQty * roomData.fixed_jam_batch) / jumlahMesinAktif).toFixed(1);
                     } else {
-                        // Rumus Hilir: Target Pcs / (Kapasitas per Jam dari Sheet * Jumlah unit mesin aktif)
                         const outputPerJamTotal = roomData.cap_standar * jumlahMesinAktif;
                         totalKapasitasLabel = `${outputPerJamTotal.toLocaleString('id-ID')} Pcs / Jam`;
                         durasiJam = (targetPcsCalculated / outputPerJamTotal).toFixed(1);
                     }
 
-                    // Saran manpower ditentukan oleh durasi jam kerja kumulatif
                     let mpPerMesin = roomData.mp_min;
                     if (durasiJam > 6) {
                         mpPerMesin = roomData.mp_max;
@@ -413,6 +424,7 @@
 
         function renderDashboardTable() {
             const tbody = document.getElementById('dashboardTableBody');
+            if (!tbody) return;
             
             if (activePlanDetails.length === 0) {
                 tbody.innerHTML = `
@@ -444,14 +456,12 @@
                     waktuStyleClass = "text-amber-600 font-bold";
                 }
 
-                // Format List Vertikal unit mesin riil
                 let prosesKerjaListHTML = `<div class="space-y-0.5 font-bold text-slate-800 text-xs">`;
                 row.machines_array.forEach(m => {
                     prosesKerjaListHTML += `<div class="flex items-center gap-1">🔹 ${m}</div>`;
                 });
                 prosesKerjaListHTML += `</div>`;
 
-                // Format Rincian Pasangan Manpower: Nama Mesin | X Orang
                 let manpowerListHTML = `<div class="space-y-1">`;
                 row.machines_array.forEach(m => {
                     manpowerListHTML += `
@@ -499,9 +509,9 @@
         }
 
         function updateFooterSummary(count, waktu, mp) {
-            document.getElementById('lblTotalVarian').innerText = count;
-            document.getElementById('lblTotalWaktu').innerText = `${waktu.toFixed(1)} Jam`;
-            document.getElementById('lblTotalMP').innerText = `${mp} Orang`;
+            if(document.getElementById('lblTotalVarian')) document.getElementById('lblTotalVarian').innerText = count;
+            if(document.getElementById('lblTotalWaktu')) document.getElementById('lblTotalWaktu').innerText = `${waktu.toFixed(1)} Jam`;
+            if(document.getElementById('lblTotalMP')) document.getElementById('lblTotalMP').innerText = `${mp} Orang`;
         }
 
         function finalSubmitToSheets() {
