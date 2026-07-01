@@ -211,37 +211,48 @@
 
         // Fungsi pembantu menstrukturkan array baris data dari spreadsheet ke format key varian produk
         function mengelompokkanDataMaster(rawData) {
-            let grouped = { "jelly_lip": [], "foundation": [], "powder": [] };
-            
-            rawData.forEach(row => {
-                let subBrandText = row["Sub Brand"] || "";
-                let targetProdStr = row["Target Prod"] || "0";
-                let cap_standar = parseFloat(targetProdStr.toString().replace(/,/g, '')) || 0;
-                
-                let cleanedRecord = {
-                    id: row["master_id"],
-                    plant: row["Plant Final"],
-                    ruangan: row["Ruangan"],
-                    mesin: row["Mesin"],
-                    // Menyusun penamaan nomor mesin bawaan secara otomatis sebagai basis pilihan di modal
-                    list_mesin: [row["Mesin"] + " #1", row["Mesin"] + " #2"], 
-                    tipe: cap_standar === 0 ? "HULU" : "HILIR",
-                    cap_standar: cap_standar,
-                    fixed_jam_batch: cap_standar === 0 ? 3.0 : 0, // Set fixed time 3 jam jika hulu (Mixing/TR)
-                    mp_min: parseInt(row["Manpower Minimal"]) || 1,
-                    mp_max: parseInt(row["Manpower Maksimal"]) || 2
-                };
-                
-                if (subBrandText.includes("Jelly") || subBrandText.includes("Cream") || subBrandText.includes("Velvet")) {
-                    grouped["jelly_lip"].push(cleanedRecord);
-                } else if (subBrandText.includes("320") || subBrandText.includes("Fondation")) {
-                    grouped["foundation"].push(cleanedRecord);
-                } else {
-                    grouped["powder"].push(cleanedRecord);
-                }
-            });
-            return grouped;
+    let grouped = { "jelly_lip": [], "foundation": [], "powder": [] };
+    
+    rawData.forEach(row => {
+        // PERBAIKAN: Deteksi nama kolom secara fleksibel untuk menghindari 'undefined'
+        // Kita gunakan fallback jika nama kolom aslinya sedikit berbeda di Google Sheets
+        let subBrandText = row["Sub Brand (cth: Jelly Tint ; Lip Cream ; Dll)"] || row["Sub Brand"] || "";
+        let plantFinal = row["Plant Final"] || row["Plant"] || "N/A";
+        let ruanganName = row["Ruangan"] || "N/A";
+        let mesinName = row["Mesin"] || "N/A";
+        let targetProdStr = row["Target Prod"] || row[" Target Prod "] || "0";
+        let mpMin = row["Manpower Minimal"] || 1;
+        let mpMax = row["Manpower Maksimal"] || 2;
+        
+        let cap_standar = parseFloat(targetProdStr.toString().replace(/,/g, '')) || 0;
+        
+        let cleanedRecord = {
+            id: row["master_id"] || Math.floor(Math.random() * 1000),
+            plant: plantFinal,
+            ruangan: ruanganName,
+            mesin: mesinName,
+            // Membuat nama nomor mesin secara dinamis berbasis kolom 'Mesin' asli
+            list_mesin: [mesinName + " #1", mesinName + " #2"], 
+            tipe: cap_standar === 0 ? "HULU" : "HILIR",
+            cap_standar: cap_standar,
+            fixed_jam_batch: cap_standar === 0 ? 3.0 : 0, 
+            mp_min: parseInt(mpMin) || 1,
+            mp_max: parseInt(mpMax) || 2
+        };
+        
+        // Konversi ke huruf kecil agar pencocokan string tidak sensitif huruf besar-kecil
+        let subBrandLower = subBrandText.toLowerCase();
+        
+        if (subBrandLower.includes("jelly") || subBrandLower.includes("cream") || subBrandLower.includes("velvet") || subBrandLower.includes("tint")) {
+            grouped["jelly_lip"].push(cleanedRecord);
+        } else if (subBrandLower.includes("320") || subBrandLower.includes("fondation") || subBrandLower.includes("foundation")) {
+            grouped["foundation"].push(cleanedRecord);
+        } else {
+            grouped["powder"].push(cleanedRecord);
         }
+    });
+    return grouped;
+}
 
         // CONTROL VIEW INTERACTIONS
         function openWizardModal() {
