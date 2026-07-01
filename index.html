@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Planning System - Google Apps Script Integration</title>
+    <!-- Tailwind CSS untuk Layout Modern, Bersih, dan Scannable -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased">
+
+    <!-- TOP GLOBAL HEADER -->
+    <header class="bg-slate-900 text-white shadow-md p-4 sticky top-0 z-40">
+        <div class="max-w-[96%] mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
+                    <span>⚙️ Production Scheduling Platform</span>
+                    <span class="text-xs font-semibold bg-blue-500/20 text-blue-400 px-2.5 py-0.5 rounded-full border border-blue-500/30">Google Apps Script Connected</span>
+                </h1>
+                <p class="text-xs text-slate-400 mt-0.5">Siklus Shift: 05:59 s/d 05:59 Hari Berikutnya (Maks. 24 Jam Kalender)</p>
+            </div>
+            <div>
+                <button type="button" onclick="openWizardModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition duration-150 flex items-center gap-1.5">
+                    <span>➕ Tambah Varian Baru (Wizard)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="max-w-[96%] mx-auto p-4 space-y-4">
+        
+        <!-- MAIN GRID TABLE PANEL -->
+        <section class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-5 bg-gray-50/70 border-b border-gray-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-gray-800">📋 Tampilan Jadwal Rencana Kerja Harian (`production_plan_details`)</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Menampilkan rincian vertikal per mesin operasional dan saran manpower berpasangan secara spesifik.</p>
+                </div>
+            </div>
+
+            <!-- TABLE VIEW -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[1450px]">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-700 text-xs font-bold uppercase tracking-wider border-b border-gray-200">
+                            <th class="p-3 border-r border-gray-200/60" style="width: 100px;">Tanggal</th>
+                            <th class="p-3 border-r border-gray-200/60" style="width: 70px;">Shift</th>
+                            <th class="p-3 border-r border-gray-200/60" style="width: 180px;">Sub Brand (Varian)</th>
+                            <th class="p-3 text-center border-r border-gray-200/60" style="width: 85px;">Jml Batch</th>
+                            <th class="p-3 text-right border-r border-gray-200/60" style="width: 100px;">Target (Kg)</th>
+                            <th class="p-3 text-right border-r border-gray-200/60" style="width: 90px;">Berat/Pcs (g)</th>
+                            <th class="p-3 text-right border-r border-gray-200/60" style="width: 120px;">Hasil Konv (Pcs)</th>
+                            <th class="p-3 border-r border-gray-200/60" style="width: 180px;">Proses Kerja</th>
+                            <th class="p-3 border-r border-gray-200/60" style="width: 110px;">Plant Assigned</th>
+                            <th class="p-3 border-r border-gray-200/60">Ruangan Assigned</th>
+                            <th class="p-3 text-center border-r border-gray-200/60" style="width: 110px;">Est. Waktu</th>
+                            <th class="p-3 border-r border-gray-200/60" style="width: 240px;">Saran Manpower</th>
+                            <th class="p-3 text-center" style="width: 70px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboardTableBody" class="divide-y divide-gray-100 text-sm">
+                        <!-- Default Row Empty State -->
+                        <tr id="emptyRowState">
+                            <td colspan="13" class="text-center py-16 text-gray-400">
+                                <span class="text-4xl">🗂️</span>
+                                <p class="mt-2 text-xs">Belum ada jadwal rencana produksi harian. Klik tombol **Tambah Varian Baru (Wizard)** di atas.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- FOOTER AGGREGATION METRICS -->
+            <div class="p-4 bg-slate-900 text-white flex justify-between items-center font-semibold text-xs tracking-wide">
+                <div>TABEL DATA TRANSAKSI SINKRONISASI RELASIONAL</div>
+                <div class="flex space-x-8 items-center">
+                    <div>Total Rencana Proses: <span id="lblTotalVarian" class="text-blue-400 font-bold text-sm">0</span></div>
+                    <div>Total Man-Hours Mesin: <span id="lblTotalWaktu" class="text-amber-400 font-bold text-sm">0 Jam</span></div>
+                    <div>Total Kebutuhan Manpower: <span id="lblTotalMP" class="text-emerald-400 font-bold text-sm">0 Orang</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SUBMIT TO GOOGLE SPREADSHEET ACTION -->
+        <div class="flex justify-end">
+            <button type="button" onclick="finalSubmitToSheets()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition transform hover:-translate-y-0.5 text-sm cursor-pointer">
+                💾 Kirim Seluruh Data & Commit ke Google Sheets
+            </button>
+        </div>
+    </main>
+
+    <!-- ============================================================== -->
+    <!-- WIZARD INTERACTIVE MODAL POPUP (OPTION A BUILD) -->
+    <!-- ============================================================== -->
+    <div id="wizardModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-gray-100 flex flex-col max-h-[92vh]">
+            
+            <!-- Modal Header -->
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
+                <div>
+                    <h3 class="text-base font-bold">📦 Wizard Perencanaan Multi-Proses Sekaligus</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Konfigurasi Tunggal: Cukup isi data induk 1 kali, centang semua proses paralel yang berjalan.</p>
+                </div>
+                <button onclick="closeWizardModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+
+            <!-- Modal Body Container (Scrollable) -->
+            <div class="p-6 space-y-5 overflow-y-auto flex-1">
+                
+                <!-- BARIS 1: DATA INDUK PARAMETER DASAR -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200/60">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">TANGGAL</label>
+                        <input type="date" id="wizDate" class="w-full p-2 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-blue-700 mb-1">⏱️ SHIFT</label>
+                        <select id="wizShift" class="w-full p-2 text-xs border border-blue-300 rounded-lg bg-blue-50/30 font-bold focus:outline-none">
+                            <option value="Shift 1">Shift 1 (Pagi)</option>
+                            <option value="Shift 2">Shift 2 (Siang)</option>
+                            <option value="Shift 3">Shift 3 (Malam)</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">VARIAN / SUB BRAND</label>
+                        <select id="wizBrand" onchange="loadMultiRoomGrid()" class="w-full p-2 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none font-bold text-blue-900">
+                            <option value="">-- Pilih Sub Brand --</option>
+                            <option value="jelly_lip">Jelly Tint / Lip Cream / Lip Velvet</option>
+                            <option value="foundation">Foundation 320</option>
+                            <option value="powder">Eye Shadow / Bedak / Blush On</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- BARIS 2: MANUAL INPUT QUANTITY & BERAT GRAM -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-amber-50/40 p-4 rounded-xl border border-amber-200/50">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">JUMLAH BATCH</label>
+                        <input type="number" id="wizBatchQty" placeholder="Cth: 3" class="w-full p-2 text-xs border border-gray-300 rounded-lg bg-white font-bold text-center focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">TARGET AKHIR PROD (KG)</label>
+                        <input type="number" id="wizTargetKg" oninput="calculatePcsOutput()" placeholder="Cth: 300" class="w-full p-2 text-xs border border-gray-300 rounded-lg bg-white font-bold text-right focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-blue-700 mb-1">⚖️ BERAT JADI / PCS (GRAM)</label>
+                        <input type="number" id="wizWeightPerPcsGram" oninput="calculatePcsOutput()" placeholder="Cth: 2.9" step="0.1" class="w-full p-2 text-xs border border-blue-300 rounded-lg bg-white font-bold text-right focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- KOTAK INFO REAL-TIME KONVERSI VOLUME -->
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex justify-between items-center">
+                    <span class="font-bold">📊 Hasil Konversi Target Volume Kerja Hilir (Membagi Kg ke Gram):</span>
+                    <span class="font-mono font-bold text-sm bg-white px-3 py-1 rounded-lg border border-blue-200" id="lblCalculatedPcs">- Pcs</span>
+                </div>
+
+                <!-- SEKSI CHECKLIST MATRIKS PROSES & RUANGAN PARALEL -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center border-b border-gray-200 pb-1.5">
+                        <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">⚙️ Penugasan Ruangan & Mesin Paralel Hari Berjalan</span>
+                        <span class="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded shadow-3xs">Opsi A: Multi-Select Mode</span>
+                    </div>
+
+                    <!-- Container utama pencantuman daftar baris proses secara otomatis -->
+                    <div id="multiRoomContainer" class="space-y-3">
+                        <p class="text-xs text-gray-400 italic text-center py-4">Silakan tentukan Varian Sub Brand di atas untuk memuat matriks penugasan proses.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer Buttons -->
+            <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end space-x-2">
+                <button onclick="closeWizardModal()" class="px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg transition cursor-pointer">Batal</button>
+                <button onclick="addMultiWizardToDashboard()" class="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition cursor-pointer">⚡ Terapkan ke Jadwal</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- DATA LOGIC ENGINE & API CONNECTIVITY -->
+    <!-- ============================================================== -->
+    <script>
+        // CONFIGURATION: Tempel URL Aplikasi Web dari deployment Google Apps Script Anda di sini
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ_kOJfc-6gCWSI69jEdrGNc-UJuoIMzVZf74PGuclQQ6Z7WXSRrKPXfchj0nIXFVg/exec";
+        
+        // Objek penampung database master yang ditarik dari Google Sheets tab 'master_mesin_manpower'
+        let dbMasterSheets = {};
+
+        // 1. LIFECYCLE EVENT: Dijalankan otomatis saat pertama kali Web App dibuka
+        window.onload = function() {
+            // Muat database master mesin dan ruangan secara live dari Google Sheets
+            fetch(APPS_SCRIPT_URL)
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Kelompokkan data mentah spreadsheet ke format relasional objek berbasis varian produk
+                    dbMasterSheets = mengelompokkanDataMaster(result.data);
+                    console.log("Database Master Sukses Dimuat dari Google Sheets:", dbMasterSheets);
+                } else {
+                    alert("Gagal memuat database master dari Google Sheets: " + result.message);
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching live spreadsheet master data:", err);
+                alert("🚨 Koneksi Gagal: Pastikan URL Apps Script sudah terbit (deployed) dengan akses 'Anyone'.");
+            });
+        };
+
+        // Fungsi pembantu menstrukturkan array baris data dari spreadsheet ke format key varian produk
+        function mengelompokkanDataMaster(rawData) {
+            let grouped = { "jelly_lip": [], "foundation": [], "powder": [] };
+            
+            rawData.forEach(row => {
+                let subBrandText = row["Sub Brand"] || "";
+                let targetProdStr = row["Target Prod"] || "0";
+                let cap_standar = parseFloat(targetProdStr.toString().replace(/,/g, '')) || 0;
+                
+                let cleanedRecord = {
+                    id: row["master_id"],
+                    plant: row["Plant Final"],
+                    ruangan: row["Ruangan"],
+                    mesin: row["Mesin"],
+                    // Menyusun penamaan nomor mesin bawaan secara otomatis sebagai basis pilihan di modal
+                    list_mesin: [row["Mesin"] + " #1", row["Mesin"] + " #2"], 
+                    tipe: cap_standar === 0 ? "HULU" : "HILIR",
+                    cap_standar: cap_standar,
+                    fixed_jam_batch: cap_standar === 0 ? 3.0 : 0, // Set fixed time 3 jam jika hulu (Mixing/TR)
+                    mp_min: parseInt(row["Manpower Minimal"]) || 1,
+                    mp_max: parseInt(row["Manpower Maksimal"]) || 2
+                };
+                
+                if (subBrandText.includes("Jelly") || subBrandText.includes("Cream") || subBrandText.includes("Velvet")) {
+                    grouped["jelly_lip"].push(cleanedRecord);
+                } else if (subBrandText.includes("320") || subBrandText.includes("Fondation")) {
+                    grouped["foundation"].push(cleanedRecord);
+                } else {
+                    grouped["powder"].push(cleanedRecord);
+                }
+            });
+            return grouped;
+        }
+
+        // CONTROL VIEW INTERACTIONS
+        function openWizardModal() {
+            document.getElementById('wizardModal').classList.remove('hidden');
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('wizDate').value = tomorrow.toISOString().split('T')[0];
+            
+            document.getElementById('wizBrand').value = "";
+            document.getElementById('wizBatchQty').value = "";
+            document.getElementById('wizTargetKg').value = "";
+            document.getElementById('wizWeightPerPcsGram').value = "";
+            document.getElementById('lblCalculatedPcs').innerText = "- Pcs";
+            document.getElementById('multiRoomContainer').innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4">Silakan tentukan Varian Sub Brand di atas untuk memuat matriks penugasan proses.</p>`;
+        }
+
+        function closeWizardModal() {
+            document.getElementById('wizardModal').classList.add('hidden');
+        }
+
+        function calculatePcsOutput() {
+            const kg = parseFloat(document.getElementById('wizTargetKg').value) || 0;
+            const weightGram = parseFloat(document.getElementById('wizWeightPerPcsGram').value) || 0;
+            const displayEl = document.getElementById('lblCalculatedPcs');
+
+            if (kg <= 0 || weightGram <= 0) {
+                displayEl.innerText = "- Pcs";
+                return;
+            }
+
+            const calculatedPcs = Math.round((kg * 1000) / weightGram);
+            displayEl.innerText = `${calculatedPcs.toLocaleString('id-ID')} Pcs`;
+        }
+
+        // Menampilkan seluruh Ruangan, Area Plant, dan Mesin bawaan produk sekaligus (Opsi A Grid)
+        function loadMultiRoomGrid() {
+            const brandKey = document.getElementById('wizBrand').value;
+            const container = document.getElementById('multiRoomContainer');
+
+            if (!brandKey || !dbMasterSheets[brandKey]) {
+                container.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4">Silakan tentukan Varian Sub Brand di atas.</p>`;
+                return;
+            }
+
+            let htmlString = "";
+            dbMasterSheets[brandKey].forEach(proc => {
+                let machineCheckboxes = "";
+                proc.list_mesin.forEach(m => {
+                    machineCheckboxes += `
+                        <label class="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-gray-200 text-[11px] font-medium cursor-pointer shadow-3xs hover:bg-slate-50">
+                            <input type="checkbox" name="wizMachList-${proc.id}" value="${m}" checked class="rounded text-blue-600 w-3 h-3 focus:ring-0">
+                            <span>${m}</span>
+                        </label>
+                    `;
+                });
+
+                htmlString += `
+                    <div class="p-3 bg-slate-50 border border-gray-200 rounded-xl flex items-center justify-between gap-4 hover:bg-slate-100/50 transition">
+                        <div class="flex items-start gap-3 flex-1">
+                            <input type="checkbox" id="chkRoomActive-${proc.id}" value="${proc.id}" checked class="w-4 h-4 text-blue-600 rounded focus:ring-0 mt-0.5 cursor-pointer">
+                            <div>
+                                <div class="text-xs font-bold text-gray-800">${proc.ruangan}</div>
+                                <div class="text-[10px] text-gray-400 font-mono">Area: <span class="text-gray-600 font-bold">${proc.plant}</span> | Proses: <span class="font-bold text-blue-600">${proc.mesin}</span></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-1 bg-gray-200/50 p-1.5 rounded-lg border border-gray-200/30">
+                            ${machineCheckboxes}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = htmlString;
+        }
+
+        // Mengurai hasil isian Wizard menjadi multi-baris data pada grid dashboard utama
+        function addMultiWizardToDashboard() {
+            const date = document.getElementById('wizDate').value;
+            const shift = document.getElementById('wizShift').value;
+            const brandKey = document.getElementById('wizBrand').value;
+            const brandText = document.getElementById('wizBrand').options[document.getElementById('wizBrand').selectedIndex].text;
+            const batchQty = parseFloat(document.getElementById('wizBatchQty').value) || 0;
+            const targetKg = parseFloat(document.getElementById('wizTargetKg').value) || 0;
+            const weightGram = parseFloat(document.getElementById('wizWeightPerPcsGram').value) || 0;
+
+            if (!brandKey || batchQty <= 0 || targetKg <= 0 || weightGram <= 0) {
+                alert("Mohon lengkapi seluruh formulir data induk!");
+                return;
+            }
+
+            const targetPcsCalculated = Math.round((targetKg * 1000) / weightGram);
+            let processedRowsCount = 0;
+
+            dbMasterSheets[brandKey].forEach(proc => {
+                const roomCheckbox = document.getElementById(`chkRoomActive-${proc.id}`);
+                
+                if (roomCheckbox && roomCheckbox.checked) {
+                    const checkedBoxes = document.querySelectorAll(`input[name="wizMachList-${proc.id}"]:checked`);
+                    const machineList = Array.from(checkedBoxes).map(cb => cb.value);
+                    const jumlahMesinAktif = machineList.length;
+
+                    if (jumlahMesinAktif === 0) return; 
+
+                    let totalKapasitasLabel = "";
+                    let durasiJam = 0;
+
+                    if (proc.tipe === "HULU") {
+                        totalKapasitasLabel = `${proc.fixed_jam_batch} Jam/Batch`;
+                        durasiJam = ((batchQty * proc.fixed_jam_batch) / jumlahMesinAktif).toFixed(1);
+                    } else {
+                        const outputPerJamTotal = proc.cap_standar * jumlahMesinAktif;
+                        totalKapasitasLabel = `${outputPerJamTotal.toLocaleString('id-ID')}/Jam`;
+                        durasiJam = (targetPcsCalculated / outputPerJamTotal).toFixed(1);
+                    }
+
+                    let mpPerMesin = proc.mp_min;
+                    if (durasiJam > 6) {
+                        mpPerMesin = proc.mp_max;
+                    }
+                    const totalManpowerKumulatif = mpPerMesin * jumlahMesinAktif;
+                    const generatedDetailId = "DET-" + Math.floor(1000 + Math.random() * 9000);
+
+                    activePlanDetails.push({
+                        detail_id: generatedDetailId,
+                        tanggal: date,
+                        shift: shift,
+                        varian: brandText,
+                        jumlah_batch: batchQty,
+                        target_kg: targetKg.toLocaleString('id-ID'),
+                        berat_gram: weightGram,
+                        target_pcs: targetPcsCalculated,
+                        proses_induk_nama: proc.mesin,
+                        machines_array: machineList, 
+                        plant: proc.plant,
+                        ruangan: proc.ruangan,
+                        kapasitas_display: totalKapasitasLabel,
+                        est_waktu: parseFloat(durasiJam),
+                        saran_mp_total: totalManpowerKumulatif,
+                        mp_per_mesin_rate: mpPerMesin
+                    });
+
+                    processedRowsCount++;
+                }
+            });
+
+            if (processedRowsCount === 0) {
+                alert("Gagal: Anda harus mencentang minimal satu Ruangan/Proses!");
+                return;
+            }
+
+            closeWizardModal();
+            renderDashboardTable();
+        }
+
+        // Merender tampilan baris grid secara live (Rincian vertikal per-mesin & MP Berpasangan)
+        function renderDashboardTable() {
+            const tbody = document.getElementById('dashboardTableBody');
+            
+            if (activePlanDetails.length === 0) {
+                tbody.innerHTML = `
+                    <tr id="emptyRowState">
+                        <td colspan="13" class="text-center py-16 text-gray-400">
+                            <span class="text-4xl">🗂️</span>
+                            <p class="mt-2 text-xs">Belum ada jadwal rencana produksi. Klik tombol **Tambah Varian Baru** di atas untuk memulai simulasi.</p>
+                        </td>
+                    </tr>
+                `;
+                updateFooterSummary(0, 0, 0);
+                return;
+            }
+
+            let htmlRows = "";
+            let sumWaktu = 0;
+            let sumMP = 0;
+
+            activePlanDetails.forEach((row) => {
+                sumWaktu += row.est_waktu;
+                sumMP += row.saran_mp_total;
+
+                let waktuStyleClass = "text-emerald-600 font-bold";
+                let warningText = "";
+                if (row.est_waktu > 24) {
+                    waktuStyleClass = "text-red-600 font-bold bg-red-50 px-2 py-1 rounded animate-pulse";
+                    warningText = " ⚠️ Over!";
+                } else if (row.est_waktu > 12) {
+                    waktuStyleClass = "text-amber-600 font-bold";
+                }
+
+                // 1. FORMAT KOLOM PROSES KERJA: Diurai vertikal berbaris
+                let prosesKerjaListHTML = `<div class="space-y-0.5 font-bold text-slate-800">`;
+                row.machines_array.forEach(m => {
+                    prosesKerjaListHTML += `<div class="flex items-center gap-1">🔹 ${m}</div>`;
+                });
+                prosesKerjaListHTML += `</div>`;
+
+                // 2. FORMAT KOLOM SARAN MANPOWER: Pasangan Nama Mesin | X Orang
+                let manpowerListHTML = `<div class="space-y-1">`;
+                row.machines_array.forEach(m => {
+                    manpowerListHTML += `
+                        <div class="flex justify-between bg-slate-50 border border-slate-200/60 px-2 py-0.5 rounded text-[11px] font-medium text-slate-600">
+                            <span>${m}</span>
+                            <span class="font-bold text-slate-800">${row.mp_per_mesin_rate} Orang</span>
+                        </div>
+                    `;
+                });
+                manpowerListHTML += `
+                    <div class="pt-1 mt-1 border-t border-dashed border-slate-300 flex justify-between text-xs font-bold text-blue-700">
+                        <span>Total Beban:</span>
+                        <span>${row.saran_mp_total} Orang</span>
+                    </div>
+                </div>`;
+
+                htmlRows += `
+                    <tr class="hover:bg-slate-50/80 transition duration-150">
+                        <td class="p-3 border-r border-gray-100 font-medium text-xs text-gray-500">${row.tanggal}</td>
+                        <td class="p-3 border-r border-gray-100 text-center font-bold text-gray-600 text-xs">${row.shift}</td>
+                        <td class="p-3 border-r border-gray-100 font-bold text-gray-800">${row.varian}</td>
+                        <td class="p-3 border-r border-gray-100 font-mono text-center font-bold text-blue-600">${row.jumlah_batch}</td>
+                        <td class="p-3 border-r border-gray-100 text-right font-bold text-slate-700">${row.target_kg} Kg</td>
+                        <td class="p-3 border-r border-gray-100 text-right font-mono font-bold text-xs text-blue-600">${row.berat_gram} g</td>
+                        <td class="p-3 border-r border-gray-100 text-right font-bold text-indigo-600">${row.target_pcs.toLocaleString('id-ID')} Pcs</td>
+                        <td class="p-3 border-r border-gray-100 text-xs">${prosesKerjaListHTML}</td>
+                        <td class="p-3 border-r border-gray-100 text-center font-bold text-slate-500 text-xs">${row.plant}</td>
+                        <td class="p-3 border-r border-gray-100 text-xs text-gray-500 leading-relaxed">${row.ruangan}</td>
+                        <td class="p-3 border-r border-gray-100 text-center ${waktuStyleClass}">${row.est_waktu} Jam${warningText}</td>
+                        <td class="p-3 border-r border-gray-100 text-xs">${manpowerListHTML}</td>
+                        <td class="p-3 text-center">
+                            <button type="button" onclick="deleteRowRecord('${row.detail_id}')" class="text-xs text-red-500 hover:text-red-700 font-semibold cursor-pointer">✕ Hapus</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = htmlRows;
+            updateFooterSummary(activePlanDetails.length, sumWaktu, sumMP);
+        }
+
+        function deleteRowRecord(detailId) {
+            activePlanDetails = activePlanDetails.filter(item => item.detail_id !== detailId);
+            renderDashboardTable();
+        }
+
+        function updateFooterSummary(count, waktu, mp) {
+            document.getElementById('lblTotalVarian').innerText = count;
+            document.getElementById('lblTotalWaktu').innerText = `${waktu.toFixed(1)} Jam`;
+            document.getElementById('lblTotalMP').innerText = `${mp} Orang`;
+        }
+
+        // TRANSMISI DATA API: Mengirimkan JSON Payload gabungan menuju Google Apps Script
+        function finalSubmitToSheets() {
+            if (activePlanDetails.length === 0) {
+                alert("Gagal melakukan sinkronisasi: Grid tabel kosong.");
+                return;
+            }
+
+            // Konstruksi payload mendetail per baris mesin operasional
+            const prosesTerpilihPayload = activePlanDetails.map(row => ({
+                mesin_assigned_list: row.machines_array.join(", "),
+                plant_assigned: row.plant,
+                ruangan_assigned: row.ruangan,
+                estimasi_waktu_jam: row.est_waktu,
+                saran_manpower_detail: `Total: ${row.saran_mp_total} Orang (` + row.machines_array.map(m => `${m}: ${row.mp_per_mesin_rate} orang`).join(" | ") + `)`
+            }));
+
+            const refInduk = activePlanDetails[0];
+
+            const payloadData = {
+                tanggal_produksi: refInduk.tanggal,
+                shift: refInduk.shift,
+                sub_brand: refInduk.varian,
+                jumlah_batch: refInduk.jumlah_batch,
+                target_kg: parseFloat(refInduk.target_kg.replace(/,/g, '')),
+                berat_pcs_gram: refInduk.berat_gram,
+                proses_terpilih: prosesTerpilihPayload
+            };
+
+            // Melakukan transmisi POST data ke Apps Script URL
+            fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Mode penting melewati batas CORS keamanan eksternal Google Redirect
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payloadData)
+            })
+            .then(() => {
+                alert(`🎉 SINKRONISASI SUKSES!\n\nSeluruh rangkaian data relasional (Induk Rencana & Rincian Mesin Kerja) telah sukses di-commit ke Spreadsheet Anda.`);
+                activePlanDetails = []; 
+                renderDashboardTable();
+            })
+            .catch(err => {
+                console.error('Error during data submission:', err);
+                alert('🚨 Sinkronisasi Gagal: Periksa kembali status deployment Web App Anda.');
+            });
+        }
+    </script>
+</body>
+</html>
